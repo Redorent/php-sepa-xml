@@ -22,9 +22,9 @@
 
 namespace Digitick\Sepa\DomBuilder;
 
+use Digitick\Sepa\GroupHeader;
 use Digitick\Sepa\PaymentInformation;
 use Digitick\Sepa\TransferFile\TransferFileInterface;
-use Digitick\Sepa\GroupHeader;
 use Digitick\Sepa\TransferInformation\CustomerCreditTransferInformation;
 use Digitick\Sepa\TransferInformation\TransferInformationInterface;
 
@@ -39,7 +39,7 @@ class CustomerCreditTransferDomBuilder extends BaseDomBuilder
      *
      * @param string $painFormat
      */
-    function __construct($painFormat = 'pain.001.002.03')
+    public function __construct($painFormat = 'pain.001.002.03')
     {
         parent::__construct($painFormat);
     }
@@ -104,6 +104,19 @@ class CustomerCreditTransferDomBuilder extends BaseDomBuilder
         $this->currentPayment->appendChild($this->createElement('ReqdExctnDt', $paymentInformation->getDueDate()));
         $debtor = $this->createElement('Dbtr');
         $debtor->appendChild($this->createElement('Nm', $paymentInformation->getOriginName()));
+
+        $debtorId    = $this->createElement('Id');
+        $debtorOrgId = $this->createElement('OrgId');
+
+        $debtorOthr = $this->createElement('Othr');
+        $debtorOthr->appendChild($this->createElement('Id', '1234567890'));
+        $debtorSchmeNm = $this->createElement('SchmeNm');
+        $debtorSchmeNm->appendChild($this->createElement('Cd', 'BANK'));
+        $debtorOthr->appendChild($debtorSchmeNm);
+        $debtorOrgId->appendChild($debtorOthr);
+        $debtorId->appendChild($debtorOrgId);
+        $debtor->appendChild($debtorId);
+
         $this->currentPayment->appendChild($debtor);
 
         if ($paymentInformation->getOriginBankPartyIdentification() !== null && $this->painFormat === 'pain.001.001.03') {
@@ -115,7 +128,7 @@ class CustomerCreditTransferDomBuilder extends BaseDomBuilder
         }
 
         $debtorAccount = $this->createElement('DbtrAcct');
-        $id = $this->createElement('Id');
+        $id            = $this->createElement('Id');
         $id->appendChild($this->createElement('IBAN', $paymentInformation->getOriginAccountIBAN()));
         $debtorAccount->appendChild($id);
         if ($paymentInformation->getOriginAccountCurrency()) {
@@ -123,7 +136,7 @@ class CustomerCreditTransferDomBuilder extends BaseDomBuilder
         }
         $this->currentPayment->appendChild($debtorAccount);
 
-        $debtorAgent = $this->createElement('DbtrAgt');
+        $debtorAgent            = $this->createElement('DbtrAgt');
         $financialInstitutionId = $this->getFinancialInstitutionElement($paymentInformation->getOriginAgentBIC());
         $debtorAgent->appendChild($financialInstitutionId);
         $this->currentPayment->appendChild($debtorAgent);
@@ -152,7 +165,7 @@ class CustomerCreditTransferDomBuilder extends BaseDomBuilder
         $CdtTrfTxInf->appendChild($PmtId);
 
         // Amount 2.42
-        $amount = $this->createElement('Amt');
+        $amount           = $this->createElement('Amt');
         $instructedAmount = $this->createElement(
             'InstdAmt',
             $this->intToCurrency($transactionInformation->getTransferAmount())
@@ -163,7 +176,7 @@ class CustomerCreditTransferDomBuilder extends BaseDomBuilder
 
         //Creditor Agent 2.77
         if ($transactionInformation->getBic()) {
-            $creditorAgent = $this->createElement('CdtrAgt');
+            $creditorAgent        = $this->createElement('CdtrAgt');
             $financialInstitution = $this->createElement('FinInstnId');
             $financialInstitution->appendChild($this->createElement('BIC', $transactionInformation->getBic()));
             $creditorAgent->appendChild($financialInstitution);
@@ -177,14 +190,13 @@ class CustomerCreditTransferDomBuilder extends BaseDomBuilder
 
         // CreditorAccount 2.80
         $creditorAccount = $this->createElement('CdtrAcct');
-        $id = $this->createElement('Id');
+        $id              = $this->createElement('Id');
         $id->appendChild($this->createElement('IBAN', $transactionInformation->getIban()));
         $creditorAccount->appendChild($id);
         $CdtTrfTxInf->appendChild($creditorAccount);
 
         // remittance 2.98 2.99
-        if (strlen($transactionInformation->getCreditorReference()) > 0)
-        {
+        if (strlen($transactionInformation->getCreditorReference()) > 0) {
             $remittanceInformation = $this->getStructuredRemittanceElement($transactionInformation->getCreditorReference());
             $CdtTrfTxInf->appendChild($remittanceInformation);
         } elseif (strlen($transactionInformation->getRemittanceInformation()) > 0) {
